@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, initial-scale=1">
+    <title>投屏助手</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <!-- ============ Idle / guide view ============ -->
+    <main id="idleView" class="idle-view">
+      <div class="idle-glow"></div>
+
+      <section class="idle-left">
+        <p class="idle-eyebrow">webOS TV · 局域网投屏</p>
+        <h1 class="idle-title" id="deviceName">投屏助手</h1>
+        <p class="idle-meta">
+          <span class="meta-chip" id="ipChip">IP 获取中…</span>
+          <span class="meta-chip" id="serviceChip">服务检测中…</span>
+        </p>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <span class="step-body"><b>连上同一个 Wi-Fi</b><i>手机和电视连接到同一路由器</i></span>
+          </li>
+          <li class="step">
+            <span class="step-num">2</span>
+            <span class="step-body"><b>打开视频 / 音乐 App</b><i>爱奇艺、腾讯视频、优酷、哔哩哔哩、网易云音乐等</i></span>
+          </li>
+          <li class="step">
+            <span class="step-num">3</span>
+            <span class="step-body"><b>点投屏按钮，选择本电视</b><i>设备名称即上方的「投屏助手」</i></span>
+          </li>
+        </ol>
+
+        <div class="idle-actions">
+          <button id="helpButton" class="btn btn-primary">设置</button>
+          <button id="remoteHintButton" class="btn">手机遥控</button>
+          <button id="exitButton" class="btn btn-ghost">退出</button>
+        </div>
+      </section>
+
+      <section class="idle-right">
+        <div class="qr-card">
+          <div class="qr-frame">
+            <canvas id="wifiQrCanvas" width="360" height="360"></canvas>
+            <div class="qr-fallback" id="wifiQrFallback">二维码<br>生成中</div>
+          </div>
+          <p class="qr-caption">扫码连 WiFi</p>
+          <p class="qr-url" id="wifiSsidText">—</p>
+          <p class="qr-desc" id="wifiQrDesc">iPhone 用相机扫码 · 安卓用 WiFi 设置扫码</p>
+        </div>
+        <div class="qr-card">
+          <div class="qr-frame">
+            <canvas id="qrCanvas" width="360" height="360"></canvas>
+            <div class="qr-fallback" id="qrFallback">二维码<br>生成中</div>
+          </div>
+          <p class="qr-caption">扫码遥控</p>
+          <p class="qr-url" id="remoteUrlText">—</p>
+          <p class="qr-desc">打开手机遥控器：推送链接、调节音量、控制播放</p>
+        </div>
+      </section>
+
+      <footer class="idle-footer">
+        <span id="footerState">DLNA Renderer 待机中</span>
+        <span class="footer-sep">·</span>
+        <span id="footerVersion">v0.0.1</span>
+      </footer>
+    </main>
+
+    <!-- ============ Playback stage (shared by video / audio / image) ============ -->
+    <div id="stageView" class="stage-view">
+      <video id="player" playsinline webkit-playsinline></video>
+      <img id="imageViewer" class="image-viewer" alt="">
+
+      <!-- Audio presentation layer -->
+      <div id="audioStage" class="audio-stage">
+        <div class="audio-art" id="audioArt">
+          <span>♪</span>
+        </div>
+        <div class="audio-info">
+          <p class="audio-title" id="audioTitle">未在播放</p>
+          <p class="audio-artist" id="audioArtist"></p>
+          <div class="audio-bar"><div class="bar-fill" id="audioBarFill"></div></div>
+          <div class="audio-times">
+            <span id="audioTimeNow">00:00</span>
+            <span id="audioTimeTotal">00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playback HUD overlay -->
+      <div id="hud" class="hud">
+        <div class="hud-top">
+          <button id="endCastButton" class="hud-end-btn" type="button">结束投屏</button>
+          <span class="hud-live"><i class="live-dot"></i><span id="hudSource">投屏中</span></span>
+          <span id="hudTitle" class="hud-title"></span>
+        </div>
+        <div class="hud-bottom">
+          <div class="hud-bar" id="hudBar"><div class="bar-fill" id="hudBarFill"></div></div>
+          <div class="hud-times">
+            <span><span id="hudTimeNow">00:00</span> / <span id="hudTimeTotal">00:00</span></span>
+            <span class="hud-state" id="hudState">就绪</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buffering indicator -->
+      <div id="buffering" class="buffering">
+        <div class="buffering-ring"></div>
+        <span>缓冲中…</span>
+      </div>
+    </div>
+
+    <!-- ============ Settings / help overlay ============ -->
+    <div id="helpOverlay" class="overlay">
+      <div class="overlay-panel">
+        <h2>设置</h2>
+        <div class="overlay-scroll">
+          <h3>设备名称</h3>
+          <div class="name-form">
+            <input id="nameInput" type="text" maxlength="24" placeholder="例如：客厅电视（留空保存则恢复默认）" autocomplete="off" spellcheck="false">
+            <button id="nameSaveButton" class="btn btn-primary" type="button">保存</button>
+          </div>
+          <p class="hint-text">手机投屏列表与本页显示的设备名称，修改后立即生效</p>
+          <h3>WiFi 连接二维码</h3>
+          <div class="name-form">
+            <input id="wifiSsidInput" type="text" maxlength="32" placeholder="WiFi 名称（SSID，电视无线连接时自动识别）" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="name-form">
+            <input id="wifiPasswordInput" type="password" maxlength="63" placeholder="WiFi 密码（留空保持不变）" autocomplete="off" spellcheck="false">
+            <button id="wifiSaveButton" class="btn btn-primary" type="button">保存</button>
+            <button id="wifiClearButton" class="btn" type="button">清除密码</button>
+          </div>
+          <p class="hint-text">保存后待机页生成「扫码连 WiFi」二维码：iPhone 相机扫码直接入网，安卓在 WiFi 设置中扫码</p>
+          <h3>手动推送一条链接（调试）</h3>
+          <form id="debugForm" class="debug-form">
+            <input id="debugUrl" type="url" placeholder="https://example.com/video.mp4" autocomplete="off" spellcheck="false">
+            <div class="debug-row">
+              <select id="debugType">
+                <option value="video/mp4">视频</option>
+                <option value="audio/mpeg">音乐</option>
+                <option value="image/jpeg">图片</option>
+              </select>
+              <button type="submit" class="btn btn-primary">播放</button>
+              <button type="button" id="debugStop" class="btn">停止</button>
+            </div>
+          </form>
+          <h3>使用帮助</h3>
+          <ul class="help-list">
+            <li>确认手机与电视连接<b>同一个 Wi-Fi</b>（部分路由器 2.4G / 5G 是两个网络）</li>
+            <li>检查路由器是否开启了 <b>AP 隔离 / 访客网络隔离</b>，需要关闭</li>
+            <li>保持本应用在电视前台运行，然后重新打开手机的投屏列表</li>
+            <li>个别 App 只支持自家协议（如乐播/Miracast），可改用系统「无线显示」或 DLNA 模式</li>
+            <li>视频：MP4 (H.264/H.265)、HLS (m3u8)、MKV、TS；音乐：MP3、AAC、FLAC、WAV、OGG；图片：JPG、PNG、GIF、BMP、WebP</li>
+            <li>字幕：App 推送 SRT / VTT 字幕时自动加载</li>
+          </ul>
+          <h3>关于</h3>
+          <p class="about-text" id="airplayLine">AirPlay 检测中…</p>
+          <p class="about-text">webOS TV 投屏助手 · DLNA / UPnP MediaRenderer</p>
+        </div>
+        <div class="overlay-actions">
+          <button id="helpClose" class="btn btn-primary">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- webOS.js is not bundled: the Luna chain falls back to
+         navigator.service / PalmServiceBridge (see app.js). -->
+    <script src="qr.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

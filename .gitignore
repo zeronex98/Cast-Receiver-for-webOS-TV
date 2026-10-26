@@ -1,0 +1,17 @@
+# Build output
+dist/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Runtime persistence files created next to the service when run locally
+services/com.castreceiver.tv.service/device-name.json
+services/com.castreceiver.tv.service/settings.json
+
+# Logs
+*.log

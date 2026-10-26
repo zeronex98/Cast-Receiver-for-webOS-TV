@@ -1,0 +1,12 @@
+{
+  "id": "com.castreceiver.tv",
+  "version": "0.0.1",
+  "vendor": "castreceiver",
+  "type": "web",
+  "main": "index.html",
+  "title": "投屏助手",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "bgImage.png",
+  "requiredMemory": 128
+}

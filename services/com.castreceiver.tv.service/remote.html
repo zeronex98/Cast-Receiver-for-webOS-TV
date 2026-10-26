@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1520">
+<title>投屏助手 · 遥控器</title>
+<style>
+  :root {
+    --bg: #0a1520;
+    --panel: rgba(21, 44, 61, 0.72);
+    --line: rgba(148, 197, 233, 0.16);
+    --text: #eaf4fb;
+    --muted: #8fa9bd;
+    --accent: #4db2ff;
+    --accent-2: #7ef0c8;
+    --danger: #ff8a7a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at 12% -10%, rgba(77, 178, 255, 0.16), transparent 34rem),
+                radial-gradient(circle at 110% 10%, rgba(126, 240, 200, 0.10), transparent 30rem),
+                var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    min-height: 100vh;
+    padding: max(12px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+    font-size: 15px;
+  }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 38px; height: 38px; border-radius: 12px; flex: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center;
+    color: #06202e; font-weight: 800; font-size: 17px;
+  }
+  .brand b { display: block; font-size: 16px; }
+  .brand span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .net { font-size: 12px; color: var(--muted); text-align: right; }
+  .net .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: #39d98a; vertical-align: 1px; }
+  .net.off .dot { background: var(--danger); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+    padding: 16px; margin-bottom: 12px; backdrop-filter: blur(6px);
+  }
+  .card h3 { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; }
+  .now-title { font-size: 16px; font-weight: 700; line-height: 1.45; word-break: break-all; min-height: 22px; }
+  .now-sub { font-size: 12px; color: var(--muted); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .state-pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; background: rgba(77,178,255,.16); color: var(--accent); }
+  .state-pill.playing { background: rgba(57,217,138,.16); color: #39d98a; }
+  .state-pill.paused { background: rgba(255,184,77,.16); color: #ffb84d; }
+  .state-pill.error { background: rgba(255,138,122,.18); color: var(--danger); }
+  .seek-row { margin-top: 14px; }
+  .seek-row input[type=range] { width: 100%; }
+  .times { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+  button {
+    appearance: none; border: 1px solid var(--line); border-radius: 14px;
+    background: rgba(9, 25, 37, 0.85); color: var(--text);
+    padding: 13px 6px; font-size: 14px; font-family: inherit; cursor: pointer;
+  }
+  button:active { background: rgba(77, 178, 255, 0.18); }
+  button.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #06202e; font-weight: 800; border: none;
+  }
+  button.danger { color: var(--danger); }
+  .vol-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .vol-row input[type=range] { flex: 1; }
+  .vol-row .vol-num { width: 34px; text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; height: 26px; background: transparent; margin: 0;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 99px; background: rgba(148, 197, 233, 0.22);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; margin-top: -7px; box-shadow: 0 1px 6px rgba(0,0,0,.5);
+  }
+  input[type=range]:disabled::-webkit-slider-thumb { background: var(--muted); }
+  .cast-form { display: flex; gap: 8px; }
+  .cast-form + .cast-form { margin-top: 8px; }
+  .cast-form input {
+    flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(4, 14, 22, 0.8); color: var(--text); padding: 11px 12px; font-size: 14px; font-family: inherit;
+  }
+  .cast-form input::placeholder { color: #56718a; }
+  .cast-form button { flex: none; padding: 11px 16px; font-weight: 700; }
+  .vol-row button { flex: none; padding: 9px 12px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 9px; line-height: 1.6; }
+  .link-btn { color: var(--accent); text-decoration: none; margin-left: 6px; white-space: nowrap; }
+  .queue-list { list-style: none; margin: 0; padding: 0; }
+  .queue-list li {
+    display: flex; align-items: center; gap: 10px; padding: 10px 6px;
+    border-bottom: 1px solid rgba(148, 197, 233, 0.08); font-size: 14px; cursor: pointer;
+  }
+  .queue-list li:last-child { border-bottom: none; }
+  .queue-list li .idx { flex: none; width: 22px; text-align: center; color: var(--muted); font-size: 12px; }
+  .queue-list li .t { flex: 1; word-break: break-all; }
+  .queue-list li.active { color: var(--accent); font-weight: 700; }
+  .queue-list li.active .idx { color: var(--accent); }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px 0 8px; }
+  .repeat-row { display: flex; gap: 8px; margin-top: 10px; }
+  .repeat-row button { padding: 9px 6px; font-size: 13px; }
+  .repeat-row button.on { border-color: var(--accent); color: var(--accent); }
+  footer { text-align: center; color: #54708a; font-size: 11px; padding: 10px 0 4px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="brand">
+      <div class="logo">投</div>
+      <div>
+        <b id="tvName">投屏助手</b>
+        <span id="tvInfo">正在连接电视…</span>
+      </div>
+    </div>
+    <div class="net" id="netState"><span class="dot"></span>已连接</div>
+  </div>
+
+  <div class="card">
+    <h3>正在播放</h3>
+    <div class="now-title" id="nowTitle">暂无内容</div>
+    <div class="now-sub">
+      <span class="state-pill" id="nowState">空闲</span>
+      <span id="nowSource"></span>
+    </div>
+    <div class="seek-row">
+      <input type="range" id="seek" min="0" max="1000" value="0" disabled>
+      <div class="times"><span id="timeNow">00:00</span><span id="timeTotal">00:00</span></div>
+    </div>
+    <div class="controls">
+      <button id="btnPrev">⏮ 上一曲</button>
+      <button id="btnToggle" class="primary">⏯ 播放/暂停</button>
+      <button id="btnNext">⏭ 下一曲</button>
+      <button id="btnStop" class="danger">⏹ 停止</button>
+    </div>
+    <div class="vol-row">
+      <button id="btnMute">🔇 静音</button>
+      <input type="range" id="volume" min="0" max="100" value="50">
+      <span class="vol-num" id="volNum">50</span>
+    </div>
+    <div class="repeat-row">
+      <button data-mode="NORMAL" id="modeNormal">顺序</button>
+      <button data-mode="REPEAT_ALL" id="modeRepeatAll">列表循环</button>
+      <button data-mode="REPEAT_ONE" id="modeRepeatOne">单曲循环</button>
+      <button data-mode="SHUFFLE" id="modeShuffle">随机</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>推送到电视</h3>
+    <div class="cast-form">
+      <input type="url" id="castUrl" placeholder="粘贴视频/音乐/图片直链 https://…" autocapitalize="off" autocorrect="off">
+      <button id="btnCast" class="primary">播放</button>
+    </div>
+    <div class="hint">支持 MP4 / HLS(m3u8) / MKV / MP3 / FLAC / 图片直链。链接需可公开访问，电视将直接拉流播放。</div>
+  </div>
+
+  <div class="card">
+    <h3>设备名称</h3>
+    <div class="cast-form">
+      <input type="text" id="nameInput" maxlength="24" placeholder="例如：客厅电视（留空保存则恢复默认）" autocapitalize="off" autocorrect="off">
+      <button id="btnNameSave" class="primary">保存</button>
+    </div>
+    <div class="hint">修改后手机投屏列表将显示新名称；留空保存恢复为电视型号名。</div>
+  </div>
+
+  <div class="card">
+    <h3>WiFi 连接二维码</h3>
+    <div class="cast-form">
+      <input type="text" id="wifiSsid" maxlength="32" placeholder="WiFi 名称（SSID）" autocapitalize="off" autocorrect="off">
+    </div>
+    <div class="cast-form">
+      <input type="password" id="wifiPass" maxlength="63" placeholder="WiFi 密码（留空保持不变）" autocomplete="off">
+      <button id="btnWifiSave" class="primary">保存</button>
+    </div>
+    <div class="hint">保存后电视待机页生成「扫码连 WiFi」二维码：iPhone 相机扫码直接入网，安卓在 WiFi 设置中扫码。<a href="#" id="btnWifiClear" class="link-btn">清除密码</a></div>
+  </div>
+
+  <div class="card">
+    <h3>播放队列</h3>
+    <ul class="queue-list" id="queueList"></ul>
+    <div class="empty" id="queueEmpty">队列为空，可在视频 App 中加入多个投屏任务</div>
+  </div>
+
+  <footer>webOS TV 投屏助手 · 与电视处于同一 Wi-Fi 下即可控制</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var el = {
+    tvName: document.getElementById("tvName"),
+    tvInfo: document.getElementById("tvInfo"),
+    netState: document.getElementById("netState"),
+    nowTitle: document.getElementById("nowTitle"),
+    nowState: document.getElementById("nowState"),
+    nowSource: document.getElementById("nowSource"),
+    seek: document.getElementById("seek"),
+    timeNow: document.getElementById("timeNow"),
+    timeTotal: document.getElementById("timeTotal"),
+    btnPrev: document.getElementById("btnPrev"),
+    btnToggle: document.getElementById("btnToggle"),
+    btnNext: document.getElementById("btnNext"),
+    btnStop: document.getElementById("btnStop"),
+    btnMute: document.getElementById("btnMute"),
+    volume: document.getElementById("volume"),
+    volNum: document.getElementById("volNum"),
+    castUrl: document.getElementById("castUrl"),
+    btnCast: document.getElementById("btnCast"),
+    nameInput: document.getElementById("nameInput"),
+    btnNameSave: document.getElementById("btnNameSave"),
+    wifiSsid: document.getElementById("wifiSsid"),
+    wifiPass: document.getElementById("wifiPass"),
+    btnWifiSave: document.getElementById("btnWifiSave"),
+    btnWifiClear: document.getElementById("btnWifiClear"),
+    queueList: document.getElementById("queueList"),
+    queueEmpty: document.getElementById("queueEmpty")
+  };
+
+  var lastStatus = null;
+  var lastRev = -1;
+  var draggingSeek = false;
+  var draggingVolume = false;
+
+  function request(method, path, body, callback) {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, path, true);
+      if (body !== undefined) {
+        xhr.setRequestHeader("Content-Type", "application/json");
+      }
+      xhr.timeout = 30000;
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) {
+          return;
+        }
+        var data = null;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch (error) {}
+        callback(xhr.status >= 200 && xhr.status < 300 && data ? data : null);
+      };
+      xhr.onerror = function () {
+        callback(null);
+      };
+      xhr.ontimeout = function () {
+        callback(null);
+      };
+      xhr.send(body === undefined ? null : JSON.stringify(body));
+    } catch (error) {
+      callback(null);
+    }
+  }
+
+  function poll() {
+    var path = "/status" + (lastRev >= 0 ? "?rev=" + lastRev + "&wait=15" : "");
+    request("GET", path, undefined, function (data) {
+      if (data) {
+        setOnline(true);
+        lastStatus = data;
+        lastRev = data.rev;
+        render(data);
+      } else {
+        setOnline(false);
+      }
+      setTimeout(poll, data ? 0 : 2000);
+    });
+  }
+
+  function setOnline(online) {
+    if (online) {
+      el.netState.classList.remove("off");
+      el.netState.innerHTML = "<span class=\"dot\"></span>已连接";
+    } else {
+      el.netState.classList.add("off");
+      el.netState.innerHTML = "<span class=\"dot\"></span>连接断开，重试中…";
+    }
+  }
+
+  function post(path, body) {
+    request("POST", path, body || {}, function (data) {
+      if (data) {
+        lastStatus = data;
+        lastRev = data.rev;
+        render(data);
+      }
+    });
+  }
+
+  function render(data) {
+    var media = data.currentMedia;
+
+    if (data.service) {
+      el.tvName.textContent = data.service.name || "投屏助手";
+      el.tvInfo.textContent = (data.service.ip || "") + " · webOS TV";
+      if (el.nameInput && document.activeElement !== el.nameInput) {
+        el.nameInput.value = data.service.name || "";
+      }
+    }
+
+    if (data.wifi && el.wifiSsid && document.activeElement !== el.wifiSsid) {
+      el.wifiSsid.value = data.wifi.ssid || "";
+    }
+
+    if (!media) {
+      el.nowTitle.textContent = "暂无内容";
+      el.nowState.textContent = "空闲";
+      el.nowState.className = "state-pill";
+      el.nowSource.textContent = "";
+      el.seek.value = 0;
+      el.seek.disabled = true;
+      el.timeNow.textContent = "00:00";
+      el.timeTotal.textContent = "00:00";
+    } else {
+      el.nowTitle.textContent = media.title || "未知内容";
+      el.nowState.textContent = stateText(data.transportState, data.transportStatus);
+      el.nowState.className = "state-pill " + stateClass(data.transportState, data.transportStatus);
+      el.nowSource.textContent = data.controller && data.controller.name ? "来自 " + data.controller.name : "";
+      el.seek.disabled = false;
+      var duration = data.duration || 0;
+      if (!draggingSeek && duration > 0) {
+        el.seek.max = Math.floor(duration);
+        el.seek.value = Math.min(Math.floor(data.position || 0), Math.floor(duration));
+      }
+      el.timeNow.textContent = fmt(data.position || 0);
+      el.timeTotal.textContent = fmt(duration);
+    }
+
+    if (!draggingVolume) {
+      el.volume.value = data.volume;
+      el.volNum.textContent = data.volume;
+    }
+    el.btnMute.textContent = data.mute ? "🔇 已静音" : "🔇 静音";
+    el.btnMute.style.color = data.mute ? "var(--danger)" : "";
+
+    syncModeButtons(data.playMode);
+    renderQueue(data);
+  }
+
+  function stateText(transportState, transportStatus) {
+    if (transportStatus === "ERROR") {
+      return "播放出错";
+    }
+    if (transportState === "PLAYING") {
+      return "正在播放";
+    }
+    if (transportState === "PAUSED_PLAYBACK") {
+      return "已暂停";
+    }
+    if (transportState === "TRANSITIONING") {
+      return "缓冲中";
+    }
+    if (transportState === "STOPPED") {
+      return "已停止";
+    }
+    return "空闲";
+  }
+
+  function stateClass(transportState, transportStatus) {
+    if (transportStatus === "ERROR") {
+      return "error";
+    }
+    if (transportState === "PLAYING") {
+      return "playing";
+    }
+    if (transportState === "PAUSED_PLAYBACK") {
+      return "paused";
+    }
+    return "";
+  }
+
+  function renderQueue(data) {
+    var queue = data.queue || [];
+    el.queueList.innerHTML = "";
+    el.queueEmpty.style.display = queue.length ? "none" : "block";
+    queue.forEach(function (item, index) {
+      var li = document.createElement("li");
+      if (index === data.currentTrackIndex) {
+        li.className = "active";
+      }
+      var idx = document.createElement("span");
+      idx.className = "idx";
+      idx.textContent = String(index + 1);
+      var t = document.createElement("span");
+      t.className = "t";
+      t.textContent = item.title || "未命名";
+      li.appendChild(idx);
+      li.appendChild(t);
+      li.addEventListener("click", function () {
+        post("/renderer/jump", { index: index });
+      });
+      el.queueList.appendChild(li);
+    });
+  }
+
+  function syncModeButtons(playMode) {
+    var ids = {
+      NORMAL: "modeNormal",
+      REPEAT_ALL: "modeRepeatAll",
+      REPEAT_ONE: "modeRepeatOne",
+      SHUFFLE: "modeShuffle"
+    };
+    Object.keys(ids).forEach(function (mode) {
+      var node = document.getElementById(ids[mode]);
+      if (node) {
+        node.className = playMode === mode ? "on" : "";
+      }
+    });
+  }
+
+  function fmt(totalSeconds) {
+    var s = Math.max(0, Math.floor(totalSeconds || 0));
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var r = s % 60;
+    var mm = (m < 10 ? "0" : "") + m;
+    var ss = (r < 10 ? "0" : "") + r;
+    return h > 0 ? h + ":" + mm + ":" + ss : mm + ":" + ss;
+  }
+
+  el.btnToggle.addEventListener("click", function () {
+    if (!lastStatus) {
+      return;
+    }
+    var playing = lastStatus.transportState === "PLAYING";
+    post("/renderer/state", {
+      transportState: playing ? "PAUSED_PLAYBACK" : "PLAYING",
+      force: true
+    });
+  });
+
+  el.btnStop.addEventListener("click", function () {
+    post("/renderer/stop");
+  });
+
+  el.btnNext.addEventListener("click", function () {
+    post("/renderer/next");
+  });
+
+  el.btnPrev.addEventListener("click", function () {
+    post("/renderer/previous");
+  });
+
+  el.btnMute.addEventListener("click", function () {
+    post("/renderer/mute", { mute: !(lastStatus && lastStatus.mute) });
+  });
+
+  el.volume.addEventListener("input", function () {
+    draggingVolume = true;
+    el.volNum.textContent = el.volume.value;
+  });
+  el.volume.addEventListener("change", function () {
+    draggingVolume = false;
+    post("/renderer/volume", { volume: parseInt(el.volume.value, 10) });
+  });
+
+  el.seek.addEventListener("input", function () {
+    draggingSeek = true;
+    el.timeNow.textContent = fmt(parseInt(el.seek.value, 10));
+  });
+  el.seek.addEventListener("change", function () {
+    draggingSeek = false;
+    post("/renderer/seek", { position: parseInt(el.seek.value, 10) });
+  });
+
+  el.btnCast.addEventListener("click", function () {
+    var url = el.castUrl.value.trim();
+    if (!url) {
+      return;
+    }
+    post("/renderer/play", { url: url, title: "" });
+    el.castUrl.blur();
+  });
+  el.castUrl.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      el.btnCast.click();
+    }
+  });
+
+  function saveDeviceName() {
+    if (!el.nameInput) {
+      return;
+    }
+    post("/renderer/device-name", { name: el.nameInput.value.trim() });
+    el.nameInput.blur();
+  }
+  if (el.btnNameSave) {
+    el.btnNameSave.addEventListener("click", saveDeviceName);
+  }
+  if (el.nameInput) {
+    el.nameInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        saveDeviceName();
+      }
+    });
+  }
+
+  function saveWifi() {
+    if (!el.wifiSsid) {
+      return;
+    }
+    var payload = { ssid: el.wifiSsid.value.trim() };
+    var password = el.wifiPass ? el.wifiPass.value : "";
+    if (password !== "") {
+      payload.password = password;
+    }
+    post("/renderer/wifi", payload);
+    if (el.wifiPass) {
+      el.wifiPass.value = "";
+    }
+    el.wifiPass.blur();
+  }
+  if (el.btnWifiSave) {
+    el.btnWifiSave.addEventListener("click", saveWifi);
+  }
+  if (el.wifiPass) {
+    el.wifiPass.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        saveWifi();
+      }
+    });
+  }
+  if (el.btnWifiClear) {
+    el.btnWifiClear.addEventListener("click", function (event) {
+      event.preventDefault();
+      post("/renderer/wifi", { password: null });
+      if (el.wifiPass) {
+        el.wifiPass.value = "";
+      }
+    });
+  }
+
+  var modeButtons = document.querySelectorAll(".repeat-row button");
+  Array.prototype.forEach.call(modeButtons, function (node) {
+    node.addEventListener("click", function () {
+      post("/renderer/repeat", { mode: node.getAttribute("data-mode") });
+    });
+  });
+
+  poll();
+}());
+</script>
+</body>
+</html>

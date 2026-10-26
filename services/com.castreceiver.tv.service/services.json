@@ -1,0 +1,9 @@
+{
+  "id": "com.castreceiver.tv.service",
+  "description": "Cast Receiver: DLNA/UPnP renderer background service",
+  "services": [
+    {
+      "name": "com.castreceiver.tv.service"
+    }
+  ]
+}
