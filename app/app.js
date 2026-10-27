@@ -67,6 +67,7 @@
     hudTimeTotal: $("hudTimeTotal"),
     hudState: $("hudState"),
     endCastButton: $("endCastButton"),
+    playPauseButton: $("playPauseButton"),
     buffering: $("buffering"),
 
     helpOverlay: $("helpOverlay"),
@@ -112,6 +113,7 @@
   var pageHidden = false;
 
   var hudHideTimer = null;
+  var bufferingTimer = null;
   var toastTimer = null;
   var exitArmedAt = 0;
   var retryCount = 0;
@@ -669,7 +671,7 @@
     el.stageView.classList.remove("visible");
     el.idleView.style.display = "";
     el.hud.classList.remove("visible");
-    el.buffering.classList.remove("visible");
+    hideBuffering();
   }
 
   function showStage(media) {
@@ -708,7 +710,7 @@
 
   function loadMedia(media, data) {
     clearSubtitles();
-    el.buffering.classList.remove("visible");
+    hideBuffering();
 
     if (media.mediaType === "image") {
       el.player.pause();
@@ -730,13 +732,13 @@
     if (data && data.transportState === "PLAYING") {
       tryPlay();
     }
-    showHud(true);
+    showHud();
   }
 
   function loadImage(media) {
     el.imageViewer.onload = function () {
-      el.buffering.classList.remove("visible");
-      showHud(true);
+      hideBuffering();
+      showHud();
     };
     el.imageViewer.onerror = function () {
       el.imageViewer.removeAttribute("src");
@@ -900,8 +902,31 @@
     if (!stick && desiredPlaying) {
       hudHideTimer = setTimeout(function () {
         el.hud.classList.remove("visible");
-      }, 3500);
+      }, 5000);
     }
+  }
+
+  /* Buffering indicator: `waiting`/`stalled` can fire spuriously on some
+   * webOS builds without a matching `playing` event, so show it only after
+   * a short grace period and hide it as soon as media time advances. */
+  function hideBuffering() {
+    if (bufferingTimer) {
+      clearTimeout(bufferingTimer);
+      bufferingTimer = null;
+    }
+    el.buffering.classList.remove("visible");
+  }
+
+  function scheduleBuffering() {
+    if (!desiredPlaying || el.player.paused || el.player.ended || bufferingTimer) {
+      return;
+    }
+    bufferingTimer = setTimeout(function () {
+      bufferingTimer = null;
+      if (desiredPlaying && !el.player.paused && !el.player.ended && el.player.readyState < 3) {
+        el.buffering.classList.add("visible");
+      }
+    }, 800);
   }
 
   function renderHud(data) {
@@ -929,6 +954,13 @@
       }
     }
     setTextCached(el.hudState, transportText(data.transportState, data.transportStatus));
+    var isPlaying = data.transportState === "PLAYING";
+    if (isPlaying) {
+      el.playPauseButton.classList.add("playing");
+    } else {
+      el.playPauseButton.classList.remove("playing");
+    }
+    el.playPauseButton.setAttribute("aria-label", isPlaying ? "暂停" : "播放");
   }
 
   function renderAudioStage(data) {
@@ -978,7 +1010,7 @@
 
     player.addEventListener("loadedmetadata", function () {
       debugLog("player", "loadedmetadata duration=" + Math.floor(player.duration || 0) + "s");
-      el.buffering.classList.remove("visible");
+      hideBuffering();
       tryApplyPendingSeek();
       var duration = Math.floor(player.duration || 0);
       if (duration > 0) {
@@ -987,7 +1019,7 @@
     });
 
     player.addEventListener("canplay", function () {
-      el.buffering.classList.remove("visible");
+      hideBuffering();
       if (desiredPlaying && player.paused && player.src) {
         tryPlay();
       }
@@ -995,20 +1027,16 @@
     });
 
     player.addEventListener("waiting", function () {
-      if (desiredPlaying) {
-        el.buffering.classList.add("visible");
-      }
+      scheduleBuffering();
     });
 
     player.addEventListener("stalled", function () {
-      if (desiredPlaying) {
-        el.buffering.classList.add("visible");
-      }
+      scheduleBuffering();
     });
 
     player.addEventListener("playing", function () {
       debugLog("player", "playing at " + Math.floor(player.currentTime || 0) + "s");
-      el.buffering.classList.remove("visible");
+      hideBuffering();
       postState({ transportState: "PLAYING", transportStatus: "OK" });
       showHud(false);
     });
@@ -1020,6 +1048,7 @@
     player.addEventListener("pause", function () {
       debugLog("player", "paused at " + Math.floor(player.currentTime || 0) + "s");
       if (!player.ended) {
+        hideBuffering();
         postState({ transportState: "PAUSED_PLAYBACK" });
         showHud(true);
       }
@@ -1039,6 +1068,11 @@
     });
 
     player.addEventListener("timeupdate", function () {
+      /* Media time advances only while playback is healthy; clear any
+       * spinner left behind by a spurious waiting/stalled event. */
+      if (!player.paused && el.buffering.classList.contains("visible")) {
+        hideBuffering();
+      }
       var now = Date.now();
       if (now - lastReportAt < 1800) {
         renderLocalProgress();
@@ -1082,7 +1116,7 @@
   }
 
   function reportPlaybackError(reason, code) {
-    el.buffering.classList.remove("visible");
+    hideBuffering();
     showToast("播放失败：" + reason, 5000);
     postState({ transportStatus: "ERROR" });
 
@@ -1115,9 +1149,12 @@
     } else if (code === 19 || key === "MediaPause") {
       debugLog("remote", "key pause");
       playToggle(false);
-    } else if (code === 10252 || key === "MediaPlayPause" || (code === 13 && isStageVisible())) {
+    } else if (code === 10252 || key === "MediaPlayPause") {
       debugLog("remote", "key playpause");
-      playToggle(!el.player.paused);
+      togglePlayback();
+    } else if (isStageVisible() && isConfirmKey(code, key)) {
+      debugLog("remote", "key confirm -> playpause");
+      togglePlayback();
     } else if (code === 413 || key === "MediaStop") {
       debugLog("remote", "key stop");
       request("POST", BASE + "/renderer/stop", {}, null, 6000);
@@ -1137,13 +1174,13 @@
       seekLocal(10);
     } else if (code === 38 || key === "ArrowUp" || code === 40 || key === "ArrowDown") {
       /* D-pad up/down: bring up the HUD (progress bar) */
-      showHud(true);
+      showHud();
     } else if (code === 461 || key === "BrowserBack" || key === "Back" || key === "GoBack") {
       debugLog("remote", "key back");
       handleBack();
     } else if (code === 403 || key === "Info") {
       debugLog("remote", "key info");
-      showHud(true);
+      showHud();
     } else {
       handled = false;
     }
@@ -1157,6 +1194,28 @@
     return el.stageView.classList.contains("visible");
   }
 
+  /* Remote OK / Enter during playback toggles play/pause. Several key
+   * shapes are accepted because firmwares differ (13 is the standard). */
+  function isConfirmKey(code, key) {
+    return code === 13 || code === 128 ||
+      key === "Enter" || key === "OK" || key === "Select" || key === "Accept";
+  }
+
+  /* Shared by the HUD button, media keys, and the remote OK key. Reports
+   * the new state with force so it also applies right after a controller
+   * command (the service otherwise ignores state echoes for 3 seconds). */
+  function togglePlayback() {
+    if (!el.player.src) {
+      return;
+    }
+    var shouldPause = !el.player.paused;
+    playToggle(!shouldPause);
+    postState({
+      transportState: shouldPause ? "PAUSED_PLAYBACK" : "PLAYING",
+      force: true
+    });
+  }
+
   function playToggle(play) {
     if (!el.player.src) {
       return;
@@ -1166,7 +1225,7 @@
     } else {
       el.player.pause();
     }
-    showHud(true);
+    showHud();
   }
 
   function seekLocal(delta) {
@@ -1208,7 +1267,7 @@
     seekSeqApplied = (status && status.seekSeq) || 0; /* local seek overrides any pending remote seek */
     pendingSeek = null;
     postState({ position: Math.floor(target) });
-    showHud(true);
+    showHud();
     renderLocalProgress();
   }
 
@@ -1225,7 +1284,7 @@
       return;
     }
     if (isStageVisible() && !el.hud.classList.contains("visible")) {
-      showHud(true);
+      showHud();
       return;
     }
     exitArmedAt = now;
@@ -1295,6 +1354,12 @@
       endCast();
     });
 
+    /* Play / pause button in the HUD (magic-remote pointer). */
+    el.playPauseButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      togglePlayback();
+    });
+
     /* Device name editor (help overlay). Empty value = reset to default. */
     el.nameSaveButton.addEventListener("click", function () {
       if (!BASE) {
@@ -1360,15 +1425,21 @@
         return;
       }
       lastMouseShow = now;
-      if (isStageVisible() && !el.hud.classList.contains("visible")) {
-        showHud(false);
+      if (isStageVisible()) {
+        showHud();
       }
     });
 
-    /* Click / magic-remote pointer on the HUD bottom block = seek. */
+    /* Click / magic-remote pointer anywhere on the bottom control block
+     * (progress bar + time row) seeks; the play/pause button is excluded. */
     var hudBar = document.getElementById("hudBar");
-    if (hudBar && hudBar.parentNode) {
-      hudBar.parentNode.addEventListener("click", function (event) {
+    var hudBottom = document.querySelector(".hud-bottom");
+    if (hudBar && hudBottom) {
+      hudBottom.addEventListener("click", function (event) {
+        if (event.target && event.target.closest &&
+            event.target.closest("#playPauseButton")) {
+          return;
+        }
         event.stopPropagation();
         var rect = hudBar.getBoundingClientRect();
         if (!rect.width) {
@@ -1403,7 +1474,7 @@
     document.addEventListener("keydown", onKey);
     document.addEventListener("click", function () {
       if (isStageVisible()) {
-        showHud(true);
+        showHud();
       }
     });
   }
@@ -1579,7 +1650,7 @@
     debugLog("boot", "front-end starting; lunaAvailable=" + lunaAvailable);
     bindPlayerEvents();
     bindUi();
-    el.footerVersion.textContent = "v0.0.3";
+    el.footerVersion.textContent = "v0.0.6";
 
     if (!lunaAvailable) {
       lunaAudioOk = false;

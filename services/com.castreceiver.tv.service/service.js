@@ -28,7 +28,7 @@ var service = new Service("com.castreceiver.tv.service");
 
 /* ============================ Constants ============================ */
 
-var VERSION = "0.0.3";
+var VERSION = "0.0.6";
 var STARTED_AT = Date.now();
 
 /* Development mode: keep verbose logs for debugging. Logs are visible
@@ -1717,7 +1717,7 @@ function applyRendererStateUpdate(payload, light) {
   }
 
   if (payload.transportState && TRANSPORT_STATES.indexOf(payload.transportState) !== -1) {
-    if (!recentCommand && payload.transportState !== state.transportState) {
+    if ((payload.force === true || !recentCommand) && payload.transportState !== state.transportState) {
       state.transportState = payload.transportState;
       notifyServices.push("AVTransport");
       soapNotify = true;

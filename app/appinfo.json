@@ -1,6 +1,6 @@
 {
   "id": "com.castreceiver.tv",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "vendor": "castreceiver",
   "type": "web",
   "main": "index.html",

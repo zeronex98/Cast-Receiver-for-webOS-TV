@@ -65,7 +65,7 @@
       <footer class="idle-footer">
         <span id="footerState">DLNA Renderer 待机中</span>
         <span class="footer-sep">·</span>
-        <span id="footerVersion">v0.0.3</span>
+        <span id="footerVersion">v0.0.6</span>
       </footer>
     </main>
 
@@ -98,7 +98,15 @@
           <span id="hudTitle" class="hud-title"></span>
         </div>
         <div class="hud-bottom">
-          <div class="hud-bar" id="hudBar"><div class="bar-fill" id="hudBarFill"></div></div>
+          <div class="hud-controls">
+            <button id="playPauseButton" class="hud-play-btn playing" type="button" aria-label="暂停">
+              <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.4"/><rect x="14" y="5" width="4" height="14" rx="1.4"/></svg>
+              <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13c0 .9 1 1.4 1.7.9l9.2-6.5c.6-.4.6-1.3 0-1.7L9.7 4.6C9 4.1 8 4.6 8 5.5z"/></svg>
+            </button>
+            <div class="hud-seek" id="hudSeek">
+              <div class="hud-bar" id="hudBar"><div class="bar-fill" id="hudBarFill"></div></div>
+            </div>
+          </div>
           <div class="hud-times">
             <span><span id="hudTimeNow">00:00</span> / <span id="hudTimeTotal">00:00</span></span>
             <span class="hud-state" id="hudState">就绪</span>

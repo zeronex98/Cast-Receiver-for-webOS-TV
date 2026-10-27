@@ -1,6 +1,6 @@
 {
   "name": "com.castreceiver.tv.service",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "description": "DLNA/UPnP MediaRenderer service for webOS TV",
   "main": "service.js",
   "license": "MIT"
