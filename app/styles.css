@@ -641,7 +641,7 @@ button {
   margin-top: 0.4rem;
 }
 
-.name-form input[type="text"] {
+.name-form input {
   flex: 1;
   padding: 0.75rem 1rem;
   border-radius: 0.7rem;
@@ -650,6 +650,10 @@ button {
   color: var(--text);
   font-size: 0.88rem;
   font-family: inherit;
+}
+
+.name-form input::placeholder {
+  color: var(--muted);
 }
 
 .hint-text {

@@ -28,7 +28,7 @@ var service = new Service("com.castreceiver.tv.service");
 
 /* ============================ Constants ============================ */
 
-var VERSION = "0.0.1";
+var VERSION = "0.0.3";
 var STARTED_AT = Date.now();
 
 /* Development mode: keep verbose logs for debugging. Logs are visible

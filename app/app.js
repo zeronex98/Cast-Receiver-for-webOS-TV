@@ -508,6 +508,9 @@
 
   function applyStatus(data) {
     updateIdleInfo(data);
+    /* The WiFi QR lives on the idle page, which returns early when no media
+     * is active — update it here so it draws in both idle and playback states. */
+    updateWifiQr(data);
 
     /* After an ipk update the service-side name file is wiped; restore the
      * user's custom name from localStorage when the service reports the
@@ -589,7 +592,6 @@
       return;
     }
 
-    updateWifiQr(data);
     renderHud(data);
     renderAudioStage(data);
     renderOverlayProgress(data);
@@ -1556,6 +1558,8 @@
       return;
     }
     lastWifiKey = key;
+    debugLog("boot", "wifi qr update ssid=" + (wifi.ssid || "(none)") +
+      " hasPassword=" + !!wifi.hasPassword);
     if (!wifi.ssid) {
       drawWifiQr("", "");
       return;
@@ -1575,7 +1579,7 @@
     debugLog("boot", "front-end starting; lunaAvailable=" + lunaAvailable);
     bindPlayerEvents();
     bindUi();
-    el.footerVersion.textContent = "v0.0.1";
+    el.footerVersion.textContent = "v0.0.3";
 
     if (!lunaAvailable) {
       lunaAudioOk = false;
