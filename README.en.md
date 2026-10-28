@@ -13,6 +13,7 @@ Pure JavaScript (a webOS web app + a background JS service). No root required, n
 
 ## Table of contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Requirements & compatibility](#requirements--compatibility)
 - [How it works](#how-it-works)
@@ -26,6 +27,12 @@ Pure JavaScript (a webOS web app + a background JS service). No root required, n
 - [Contributing](#contributing)
 - [License](#license)
 - [References](#references)
+
+## Screenshots
+
+| Idle page (dual QR) | Playback controls | Settings |
+| --- | --- | --- |
+| ![Idle page](docs/screenshots/idle.png) | ![Playback](docs/screenshots/player.png) | ![Settings](docs/screenshots/settings.png) |
 
 ## Features
 
